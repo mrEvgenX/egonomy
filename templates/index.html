@@ -1,0 +1,52 @@
+{{ define "content" }}
+    <div class="row">
+        <div class="col">
+            <p>За месяц: 0р.</p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <p>За неделю: 0р.</p>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <form>
+                <div class="form-group">
+                    <input type="text" class="form-control" id="category" placeholder="E-mail">
+                </div>
+                <div class="form-group">
+                    <input type="text" class="form-control" id="amount" placeholder="Сумма">
+                </div>
+                <div class="form-group">
+                    <input type="text" class="form-control" id="comment" placeholder="Комментарий">
+                </div>
+                <button type="submit" class="btn btn-primary">Внести</button>
+            </form>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <td>Дата</td>
+                        <td>Категория</td>
+                        <td>Сумма</td>
+                        <td>Комментарий</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range .Transactions }}
+                    <tr>
+                        <td>{{ .Date.Format "2006-01-02" }}</td>
+                        <td>{{ .Category }}</td>
+                        <td>{{ .Amount }} руб.</td>
+                        <td>{{ .Comment }}</td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{{ end }}
