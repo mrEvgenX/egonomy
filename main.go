@@ -21,6 +21,13 @@ type Transaction struct {
 	Comment  string
 }
 
+// IndexViewData - information to display on page
+type IndexViewData struct {
+	Title        string
+	Categories   []Category
+	Transactions []Transaction
+}
+
 // ViewData - information to display on page
 type ViewData struct {
 	Title        string
@@ -33,12 +40,12 @@ func index(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", 302)
 	} else {
 		var userID int
-		err := database.QueryRowx("select id from users where email = $1", userName).StructScan(&userID)
+		err := database.QueryRowx("SELECT id FROM users WHERE email = $1", userName).Scan(&userID)
 		if err != nil {
 			log.Println(err)
 		}
 
-		rows, err := database.Queryx("SELECT date, category, amount, comment FROM transactions WHERE id = $1 ORDER BY date DESC", userID)
+		rows, err := database.Queryx("SELECT date, category, amount, comment FROM transactions WHERE user_id = $1 ORDER BY date DESC", userID)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -58,9 +65,33 @@ func index(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Fatal(err)
 		}
+		rows.Close()
 
-		data := ViewData{
+		rows, err = database.Queryx("SELECT id, name FROM categories WHERE user_id = $1 ORDER BY name DESC", userID)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer rows.Close()
+
+		categories := []Category{}
+
+		for rows.Next() {
+			c := Category{}
+			err := rows.StructScan(&c)
+			if err != nil {
+				log.Fatal(err)
+			}
+			categories = append(categories, c)
+		}
+		err = rows.Err()
+		if err != nil {
+			log.Fatal(err)
+		}
+		rows.Close()
+
+		data := IndexViewData{
 			Title:        "Главная",
+			Categories:   categories,
 			Transactions: transactions,
 		}
 		tmpl, _ := template.ParseFiles("templates/layout.html", "templates/index.html", "templates/navigation_logedin.html")
@@ -80,6 +111,8 @@ func main() {
 
 	var router = mux.NewRouter()
 	router.HandleFunc("/", index)
+	router.HandleFunc("/categories", category)
+	router.HandleFunc("/delete_category", deleteCategory).Methods("POST")
 	router.HandleFunc("/login", login)
 	router.HandleFunc("/signup", signup)
 	router.HandleFunc("/logout", logout).Methods("POST")

@@ -40,16 +40,16 @@ func login(w http.ResponseWriter, r *http.Request) {
 		if bytes.Compare(sha[:], dbUser.Sha) == 0 {
 			log.Println("User logged in", email)
 			setCookie(email, w)
-			http.Redirect(w, r, "/", 301)
+			http.Redirect(w, r, "/", 302)
 		} else {
 			log.Println("Invalid password", email)
-			http.Redirect(w, r, "/login", 301)
+			http.Redirect(w, r, "/login", 302)
 		}
 
 	} else {
 		userName := getUserName(r)
 		if len(userName) != 0 {
-			http.Redirect(w, r, "/", 301)
+			http.Redirect(w, r, "/", 302)
 		} else {
 			data := ViewData{
 				Title:        "Вход",
@@ -81,11 +81,11 @@ func signup(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 		}
 		log.Println("New user signed up", email)
-		http.Redirect(w, r, "/login", 301)
+		http.Redirect(w, r, "/login", 302)
 	} else {
 		userName := getUserName(r)
 		if len(userName) != 0 {
-			http.Redirect(w, r, "/", 301)
+			http.Redirect(w, r, "/", 302)
 		} else {
 			data := ViewData{
 				Title:        "Регистрация",

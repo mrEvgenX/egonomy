@@ -1,0 +1,39 @@
+{{ define "content" }}
+<div class="row">
+        <div class="col">
+            <form method="POST" action="/categories">
+                <div class="form-group">
+                    <input type="text" class="form-control" name="category-name" placeholder="Имя категории">
+                </div>
+                <button type="submit" class="btn btn-primary">Создать</button>
+            </form>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <td>Дата</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range .Categories }}
+                    <tr>
+                        <td>{{ .Name }}</td>
+                        <td>Редактировать</td>
+                        <td>
+                            <form action="/delete_category" method="POST">
+                                <input type="hidden" name="category-id" value="{{ .ID }}">
+                                <button type="submit" class="btn btn-link nav-link">Удалить</button>
+                            </form>                            
+                        </td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{{ end }}

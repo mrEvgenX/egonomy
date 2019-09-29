@@ -13,7 +13,8 @@ CREATE TABLE users(
 CREATE TABLE categories(
 	id serial PRIMARY KEY,
 	name varchar(64) NOT NULL,
-	user_id integer REFERENCES users(id)
+	user_id integer REFERENCES users(id),
+    UNIQUE(name, user_id)
 );
 
 CREATE TABLE transactions(
