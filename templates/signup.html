@@ -1,18 +1,28 @@
 {{ define "content" }}
     <div class="row">
         <div class="col">
-            <form>
+            <form name="signupForm" action="/signup" method="POST" onsubmit="return validateForm()">
                 <div class="form-group">
-                    <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="E-mail">
+                    <input type="email" class="form-control" name="user-email" aria-describedby="emailHelp" placeholder="E-mail" required>
                 </div>
                 <div class="form-group">
-                    <input type="password" class="form-control" id="exampleInputPassword1" placeholder="Пароль">
+                    <input type="password" class="form-control" name="user-password" placeholder="Пароль" required>
                 </div>
                 <div class="form-group">
-                    <input type="password" class="form-control" id="exampleInputPassword1" placeholder="Подтверждение пароля">
+                    <input type="password" class="form-control" name="user-password-confirmation" placeholder="Подтверждение пароля" required>
                 </div>
                 <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
             </form>
         </div>
     </div>
+    <script>
+        function validateForm() {
+            let pass = document.forms["signupForm"]["user-password"].value;
+            let conf = document.forms["signupForm"]["user-password-confirmation"].value;
+            if (pass !== conf) {
+                alert("Подтверждение пароля неправильное.");
+                return false;
+            }
+        }
+    </script>
 {{ end }}
