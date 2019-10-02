@@ -1,0 +1,1 @@
+web: egonomic.exe

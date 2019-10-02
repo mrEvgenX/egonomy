@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -121,9 +122,13 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	dsnURL := os.Getenv("DATABASE_URL")
+	log.Println(dsnURL)
 	db, err := sqlx.Open(
 		"postgres",
-		"user=egonomist password=1234 dbname=egonomic sslmode=disable")
+		dsnURL,
+	)
+	log.Println(err)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -138,5 +143,5 @@ func main() {
 	router.HandleFunc("/signup", signup)
 	router.HandleFunc("/logout", logout).Methods("POST")
 	http.Handle("/", router)
-	http.ListenAndServe(":8181", nil)
+	http.ListenAndServe(":8000", nil)
 }

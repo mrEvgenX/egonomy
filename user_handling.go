@@ -45,7 +45,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 			log.Println("Invalid password", email)
 			http.Redirect(w, r, "/login", 302)
 		}
-
 	} else {
 		userName := getUserName(r)
 		if len(userName) != 0 {
