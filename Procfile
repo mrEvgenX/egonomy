@@ -1,1 +1,1 @@
-web: egonomic.exe
+web: bin/egonomic
