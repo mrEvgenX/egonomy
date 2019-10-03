@@ -128,7 +128,6 @@ func main() {
 		"postgres",
 		dsnURL,
 	)
-	log.Println(err)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -143,5 +142,5 @@ func main() {
 	router.HandleFunc("/signup", signup)
 	router.HandleFunc("/logout", logout).Methods("POST")
 	http.Handle("/", router)
-	http.ListenAndServe(":8000", nil)
+	http.ListenAndServe(":" + os.Getenv("PORT"), nil)
 }
