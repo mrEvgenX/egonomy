@@ -1,8 +1,4 @@
-DROP TABLE IF EXISTS users CASCADE;
-DROP TABLE IF EXISTS categories CASCADE;
-DROP TABLE IF EXISTS transactions CASCADE;
-
-CREATE TABLE users(
+CREATE TABLE IF NOT EXISTS users(
 	id serial PRIMARY KEY,
 	email varchar(256) NOT NULL UNIQUE,
 	sha bytea NOT NULL,
@@ -10,14 +6,14 @@ CREATE TABLE users(
 	online boolean NOT NULL
 );
 
-CREATE TABLE categories(
+CREATE TABLE IF NOT EXISTS categories(
 	id serial PRIMARY KEY,
 	name varchar(64) NOT NULL,
 	user_id integer REFERENCES users(id),
     UNIQUE(name, user_id)
 );
 
-CREATE TABLE transactions(
+CREATE TABLE IF NOT EXISTS transactions(
 	id serial PRIMARY KEY,
     user_id integer REFERENCES users(id),
 	"date" date NOT NULL,
