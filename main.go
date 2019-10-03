@@ -27,11 +27,12 @@ type Transaction struct {
 type IndexViewData struct {
 	Title        string
 	Categories   []Category
-	Transactions []Transaction
+	MonthlyTotal float32
+	WeeklyTotal  float32
 }
 
-// ViewData - information to display on page
-type ViewData struct {
+// ReportsViewData - information to display on page
+type ReportsViewData struct {
 	Title        string
 	Transactions []Transaction
 }
@@ -66,29 +67,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 			http.Redirect(w, r, "/", 302)
 		} else {
-			rows, err := database.Queryx("SELECT date, category, amount, comment FROM transactions WHERE user_id = $1 ORDER BY date DESC", userID)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer rows.Close()
-
-			transactions := []Transaction{}
-
-			for rows.Next() {
-				t := Transaction{}
-				err := rows.StructScan(&t)
-				if err != nil {
-					log.Fatal(err)
-				}
-				transactions = append(transactions, t)
-			}
-			err = rows.Err()
-			if err != nil {
-				log.Fatal(err)
-			}
-			rows.Close()
-
-			rows, err = database.Queryx("SELECT id, name FROM categories WHERE user_id = $1 ORDER BY name DESC", userID)
+			rows, err := database.Queryx("SELECT id, name FROM categories WHERE user_id = $1 ORDER BY name DESC", userID)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -110,14 +89,66 @@ func index(w http.ResponseWriter, r *http.Request) {
 			}
 			rows.Close()
 
+			var (
+				monthlyTotal float32
+				weeklyTotal  float32
+			)
+
+			err = database.QueryRowx("select 0, 0").Scan(&monthlyTotal, &weeklyTotal)
+			if err != nil {
+				log.Println(err)
+			}
+
 			data := IndexViewData{
 				Title:        "Главная",
 				Categories:   categories,
-				Transactions: transactions,
+				MonthlyTotal: 0,
+				WeeklyTotal:  0,
 			}
 			tmpl, _ := template.ParseFiles("templates/layout.html", "templates/index.html", "templates/navigation_logedin.html")
 			tmpl.ExecuteTemplate(w, "layout", data)
 		}
+	}
+}
+
+func reports(w http.ResponseWriter, r *http.Request) {
+	userName := getUserName(r)
+	if len(userName) == 0 {
+		http.Redirect(w, r, "/login", 302)
+	} else {
+		var userID int
+		err := database.QueryRowx("SELECT id FROM users WHERE email = $1", userName).Scan(&userID)
+		if err != nil {
+			log.Println(err)
+		}
+		rows, err := database.Queryx("SELECT date, category, amount, comment FROM transactions WHERE user_id = $1 ORDER BY date DESC", userID)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer rows.Close()
+
+		transactions := []Transaction{}
+
+		for rows.Next() {
+			t := Transaction{}
+			err := rows.StructScan(&t)
+			if err != nil {
+				log.Fatal(err)
+			}
+			transactions = append(transactions, t)
+		}
+		err = rows.Err()
+		if err != nil {
+			log.Fatal(err)
+		}
+		rows.Close()
+
+		data := ReportsViewData{
+			Title:        "Главная",
+			Transactions: transactions,
+		}
+		tmpl, _ := template.ParseFiles("templates/layout.html", "templates/reports.html", "templates/navigation_logedin.html")
+		tmpl.ExecuteTemplate(w, "layout", data)
 	}
 }
 
@@ -137,10 +168,16 @@ func main() {
 	var router = mux.NewRouter()
 	router.HandleFunc("/", index)
 	router.HandleFunc("/categories", category)
+	router.HandleFunc("/reports", reports).Methods("GET")
 	router.HandleFunc("/delete_category", deleteCategory).Methods("POST")
 	router.HandleFunc("/login", login)
 	router.HandleFunc("/signup", signup)
 	router.HandleFunc("/logout", logout).Methods("POST")
 	http.Handle("/", router)
-	http.ListenAndServe(":" + os.Getenv("PORT"), nil)
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
+	http.ListenAndServe(":"+port, nil)
 }

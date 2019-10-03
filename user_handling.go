@@ -21,6 +21,11 @@ type User struct {
 	Online bool
 }
 
+// ViewData - information to display on page
+type ViewData struct {
+	Title string
+}
+
 func login(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		err := r.ParseForm()
@@ -51,8 +56,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/", 302)
 		} else {
 			data := ViewData{
-				Title:        "Вход",
-				Transactions: nil,
+				Title: "Вход",
 			}
 			tmpl, _ := template.ParseFiles("templates/layout.html", "templates/login.html", "templates/navigation_logedout.html")
 			tmpl.ExecuteTemplate(w, "layout", data)
@@ -87,8 +91,7 @@ func signup(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/", 302)
 		} else {
 			data := ViewData{
-				Title:        "Регистрация",
-				Transactions: nil,
+				Title: "Регистрация",
 			}
 			tmpl, _ := template.ParseFiles("templates/layout.html", "templates/signup.html", "templates/navigation_logedout.html")
 			tmpl.ExecuteTemplate(w, "layout", data)
