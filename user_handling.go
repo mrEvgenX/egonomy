@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/securecookie"
@@ -33,7 +34,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 		}
 
-		email := r.FormValue("user-email")
+		email := strings.ToLower(r.FormValue("user-email"))
 		password := r.FormValue("user-password")
 		var dbUser User
 		err = database.QueryRowx("select id, email, sha, salt, online from users where email = $1", email).StructScan(&dbUser)
@@ -44,15 +45,17 @@ func login(w http.ResponseWriter, r *http.Request) {
 		sha := sha256.Sum256([]byte(password + dbUser.Salt))
 		if bytes.Compare(sha[:], dbUser.Sha) == 0 {
 			log.Println("User logged in", email)
-			setCookie(email, w)
+			setCookie(dbUser.ID, w)
 			http.Redirect(w, r, "/", 302)
 		} else {
+			// log.Println("Actual SHA", sha[:])
+			// log.Println("Expected SHA", dbUser.Sha)
 			log.Println("Invalid password", email)
 			http.Redirect(w, r, "/login", 302)
 		}
 	} else {
-		userName := getUserName(r)
-		if len(userName) != 0 {
+		userID := getUserID(r)
+		if userID != 0 {
 			http.Redirect(w, r, "/", 302)
 		} else {
 			data := ViewData{
@@ -71,7 +74,7 @@ func signup(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 		}
 
-		email := r.FormValue("user-email")
+		email := strings.ToLower(r.FormValue("user-email"))
 		password := r.FormValue("user-password")
 		salt := stringWithCharset(saltLength, saltCharset)
 		sha := sha256.Sum256([]byte(password + salt))
@@ -82,12 +85,14 @@ func signup(w http.ResponseWriter, r *http.Request) {
 		)
 		if err != nil {
 			log.Println(err)
+			log.Println("DB is not available", email)
+		} else {
+			log.Println("New user signed up", email)
 		}
-		log.Println("New user signed up", email)
 		http.Redirect(w, r, "/login", 302)
 	} else {
-		userName := getUserName(r)
-		if len(userName) != 0 {
+		userID := getUserID(r)
+		if userID != 0 {
 			http.Redirect(w, r, "/", 302)
 		} else {
 			data := ViewData{
@@ -104,9 +109,9 @@ func logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", 302)
 }
 
-func setCookie(userName string, response http.ResponseWriter) {
-	value := map[string]string{
-		"name": userName,
+func setCookie(userID int, response http.ResponseWriter) {
+	value := map[string]int{
+		"name": userID,
 	}
 	if encoded, err := cookieHandler.Encode("cookie", value); err == nil {
 		cookie := &http.Cookie{
@@ -132,16 +137,16 @@ var cookieHandler = securecookie.New(
 	securecookie.GenerateRandomKey(64),
 	securecookie.GenerateRandomKey(32))
 
-func getUserName(r *http.Request) (userName string) {
+func getUserID(r *http.Request) (userID int) {
 	cookie, err := r.Cookie("cookie")
 	if err == nil {
-		cookieValue := make(map[string]string)
+		cookieValue := make(map[string]int)
 		err = cookieHandler.Decode("cookie", cookie.Value, &cookieValue)
 		if err == nil {
-			userName = cookieValue["name"]
+			userID = cookieValue["name"]
 		}
 	}
-	return userName
+	return userID
 }
 
 const saltLength = 5

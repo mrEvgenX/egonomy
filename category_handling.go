@@ -19,15 +19,10 @@ type CategoryViewData struct {
 }
 
 func category(w http.ResponseWriter, r *http.Request) {
-	userName := getUserName(r)
-	if len(userName) == 0 {
+	userID := getUserID(r)
+	if userID == 0 {
 		http.Redirect(w, r, "/login", 302)
 	} else {
-		var userID int
-		err := database.QueryRowx("select id from users where email = $1", userName).Scan(&userID)
-		if err != nil {
-			log.Println(err)
-		}
 		if r.Method == "POST" {
 			log.Println("Add new category")
 			err := r.ParseForm()
@@ -78,8 +73,8 @@ func category(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteCategory(w http.ResponseWriter, r *http.Request) {
-	userName := getUserName(r)
-	if len(userName) == 0 {
+	userID := getUserID(r)
+	if userID == 0 {
 		http.Redirect(w, r, "/login", 302)
 	} else {
 		err := r.ParseForm()
@@ -89,12 +84,6 @@ func deleteCategory(w http.ResponseWriter, r *http.Request) {
 		categoryID := r.FormValue("category-id")
 		var categoryUserID int
 		err = database.QueryRowx("select user_id from categories where id = $1", categoryID).Scan(&categoryUserID)
-		if err != nil {
-			log.Println(err)
-		}
-
-		var userID int
-		err = database.QueryRowx("select id from users where email = $1", userName).Scan(&userID)
 		if err != nil {
 			log.Println(err)
 		}

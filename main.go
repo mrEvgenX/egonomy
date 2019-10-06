@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	_ "github.com/golang-migrate/migrate/v4"
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -39,15 +38,10 @@ type ReportsViewData struct {
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
-	userName := getUserName(r)
-	if len(userName) == 0 {
+	userID := getUserID(r)
+	if userID == 0 {
 		http.Redirect(w, r, "/login", 302)
 	} else {
-		var userID int
-		err := database.QueryRowx("SELECT id FROM users WHERE email = $1", userName).Scan(&userID)
-		if err != nil {
-			log.Println(err)
-		}
 		if r.Method == "POST" {
 			log.Println("New transaction")
 			err := r.ParseForm()
@@ -95,7 +89,19 @@ func index(w http.ResponseWriter, r *http.Request) {
 				weeklyTotal  float32
 			)
 
-			err = database.QueryRowx("select 0, 0").Scan(&monthlyTotal, &weeklyTotal)
+			err = database.QueryRowx(`
+			SELECT 
+				monthly_sum.total_amount AS monthly_sum,
+				weekly_sum.total_amount AS weekly_sum
+			FROM (
+				SELECT SUM(amount) AS total_amount FROM transactions
+				WHERE EXTRACT(month FROM now()) = EXTRACT(month FROM date)
+			) AS monthly_sum
+			CROSS JOIN (
+				SELECT SUM(amount) AS total_amount FROM transactions
+				WHERE EXTRACT(week FROM now()) = EXTRACT(week FROM date)
+			) AS weekly_sum
+			`).Scan(&monthlyTotal, &weeklyTotal)
 			if err != nil {
 				log.Println(err)
 			}
@@ -103,8 +109,8 @@ func index(w http.ResponseWriter, r *http.Request) {
 			data := IndexViewData{
 				Title:        "Главная",
 				Categories:   categories,
-				MonthlyTotal: 0,
-				WeeklyTotal:  0,
+				MonthlyTotal: monthlyTotal,
+				WeeklyTotal:  weeklyTotal,
 			}
 			tmpl, _ := template.ParseFiles("templates/layout.html", "templates/index.html", "templates/navigation_logedin.html")
 			tmpl.ExecuteTemplate(w, "layout", data)
@@ -113,15 +119,10 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 func reports(w http.ResponseWriter, r *http.Request) {
-	userName := getUserName(r)
-	if len(userName) == 0 {
+	userID := getUserID(r)
+	if userID == 0 {
 		http.Redirect(w, r, "/login", 302)
 	} else {
-		var userID int
-		err := database.QueryRowx("SELECT id FROM users WHERE email = $1", userName).Scan(&userID)
-		if err != nil {
-			log.Println(err)
-		}
 		rows, err := database.Queryx("SELECT date, category, amount, comment FROM transactions WHERE user_id = $1 ORDER BY date DESC", userID)
 		if err != nil {
 			log.Fatal(err)
@@ -155,6 +156,9 @@ func reports(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	dsnURL := os.Getenv("DATABASE_URL")
+	if len(dsnURL) == 0 {
+		log.Fatal("Set DATABASE_URL first")
+	}
 	log.Println(dsnURL)
 	db, err := sqlx.Open(
 		"postgres",
@@ -178,6 +182,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
+		log.Println("Use default 8000 port to run")
 		port = "8000"
 	}
 	http.ListenAndServe(":"+port, nil)
