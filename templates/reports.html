@@ -14,7 +14,7 @@
                     {{ range .Transactions }}
                     <tr>
                         <td>{{ .Date.Format "2006-01-02" }}</td>
-                        <td>{{ .Category }}</td>
+                        <td>{{ .CategoryName }}</td>
                         <td>{{ .Amount }} руб.</td>
                         <td>{{ .Comment }}</td>
                     </tr>

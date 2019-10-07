@@ -12,6 +12,11 @@
     <div class="row">
         <div class="col">
             <form action="/" method="POST">
+                {{ if .ErrorDescription }}
+                <div class="alert alert-danger" role="alert">
+                    {{ .ErrorDescription }}
+                </div>
+                {{ end }}
                 <div class="form-group">
                         <select class="custom-select" name="category-id">
                             {{ range .Categories }}

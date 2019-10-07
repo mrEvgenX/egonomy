@@ -4,6 +4,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+
+	"github.com/jmoiron/sqlx"
 )
 
 // Category - element of corresponding table
@@ -75,7 +77,7 @@ func category(w http.ResponseWriter, r *http.Request) {
 func deleteCategory(w http.ResponseWriter, r *http.Request) {
 	userID := getUserID(r)
 	if userID == 0 {
-		http.Redirect(w, r, "/login", 302)
+		http.Redirect(w, r, "/login?error=1", 302)
 	} else {
 		err := r.ParseForm()
 		if err != nil {
@@ -102,4 +104,28 @@ func deleteCategory(w http.ResponseWriter, r *http.Request) {
 		}
 		http.Redirect(w, r, "/categories", 302)
 	}
+}
+
+func getAllCategoriesOfUser(db *sqlx.DB, userID int) (categories []Category) {
+	rows, err := db.Queryx("SELECT id, name FROM categories WHERE user_id = $1 ORDER BY name DESC", userID)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	categories = []Category{}
+
+	for rows.Next() {
+		c := Category{}
+		err := rows.StructScan(&c)
+		if err != nil {
+			log.Fatal(err)
+		}
+		categories = append(categories, c)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return categories
 }

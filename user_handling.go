@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,7 +25,8 @@ type User struct {
 
 // ViewData - information to display on page
 type ViewData struct {
-	Title string
+	Title            string
+	ErrorDescription string
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
@@ -48,18 +50,27 @@ func login(w http.ResponseWriter, r *http.Request) {
 			setCookie(dbUser.ID, w)
 			http.Redirect(w, r, "/", 302)
 		} else {
-			// log.Println("Actual SHA", sha[:])
-			// log.Println("Expected SHA", dbUser.Sha)
 			log.Println("Invalid password", email)
-			http.Redirect(w, r, "/login", 302)
+			http.Redirect(w, r, "/login?error=2", 302)
 		}
 	} else {
 		userID := getUserID(r)
 		if userID != 0 {
 			http.Redirect(w, r, "/", 302)
 		} else {
+			errorCodes := r.URL.Query()["error"]
+			var errorCode int64
+			if len(errorCodes) > 0 {
+				var err error
+				errorCode, err = strconv.ParseInt(errorCodes[0], 10, 32)
+				if err != nil {
+					log.Println(err)
+				}
+			}
+
 			data := ViewData{
-				Title: "Вход",
+				Title:            "Вход",
+				ErrorDescription: allErrors[int(errorCode)],
 			}
 			tmpl, _ := template.ParseFiles("templates/layout.html", "templates/login.html", "templates/navigation_logedout.html")
 			tmpl.ExecuteTemplate(w, "layout", data)
