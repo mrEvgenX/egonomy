@@ -1,0 +1,15 @@
+{{ define "content" }}
+<div class="row">
+        <div class="col">
+            <form method="POST" action="/categories/edit">
+                <div class="form-group">
+                    <label for="category-name">Переименовать категорию</label>
+                    <input type="text" class="form-control" name="category-name" placeholder="Новое имя категории" value="{{ .Category.Name }}">
+                </div>
+                <input type="hidden" name="category-id" value="{{ .Category.ID }}">
+                <button type="submit" class="btn btn-primary">Задать новое имя</button>
+                <a href="/categories" class="btn btn-secondary">Отмена</a>
+            </form>
+        </div>
+    </div>
+{{ end }}

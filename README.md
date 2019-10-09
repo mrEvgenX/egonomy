@@ -9,5 +9,5 @@
 - Запустить egonomy.exe
 
 ## Локальные тесты
-set DATABASE_URL=postgres://egonomist:1234@localhost:5432/egonomic
+set DATABASE_URL=postgres://egonomist:1234@localhost:5432/egonomic?sslmode=disable
 migrate -database $DATABASE_URL -path migrations up

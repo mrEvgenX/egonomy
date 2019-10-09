@@ -48,16 +48,17 @@ type ReportsViewData struct {
 
 var allErrors = map[int]string{
 	0: "",
-	1: "Для просмотра этой страницы необходимо зайти на сайт",
 	2: "Неправильные логин/пароль",
-	3: "Некорректный ввод, заполните все поля подходящими значениями",
-	4: "Не удалось сохранить данные в базе",
+	3: "Не удалось обработать данные формы",
+	4: "Не выбрана категория",
+	5: "Некорректное значение суммы",
+	6: "Не удалось сохранить данные в базе",
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
 	userID := getUserID(r)
 	if userID == 0 {
-		http.Redirect(w, r, "/login?error=1", 302)
+		http.Redirect(w, r, "/login", 302)
 	} else {
 		if r.Method == "POST" {
 			log.Println("New transaction")
@@ -70,13 +71,13 @@ func index(w http.ResponseWriter, r *http.Request) {
 			categoryID, err := strconv.ParseInt(r.FormValue("category-id"), 10, 32)
 			if err != nil {
 				log.Println(err)
-				http.Redirect(w, r, "/?error=3", 302)
+				http.Redirect(w, r, "/?error=4", 302)
 				return
 			}
 			amount, err := strconv.ParseFloat(r.FormValue("amount"), 32)
 			if err != nil {
 				log.Println(err)
-				http.Redirect(w, r, "/?error=3", 302)
+				http.Redirect(w, r, "/?error=5", 302)
 				return
 			}
 			comment := r.FormValue("comment")
@@ -87,10 +88,9 @@ func index(w http.ResponseWriter, r *http.Request) {
 			)
 			if err != nil {
 				log.Println(err)
-				http.Redirect(w, r, "/?error=4", 302)
+				http.Redirect(w, r, "/?error=6", 302)
 				return
 			}
-
 			http.Redirect(w, r, "/", 302)
 		} else {
 			errorCodes := r.URL.Query()["error"]
@@ -125,7 +125,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 func reports(w http.ResponseWriter, r *http.Request) {
 	userID := getUserID(r)
 	if userID == 0 {
-		http.Redirect(w, r, "/login?error=1", 302)
+		http.Redirect(w, r, "/login", 302)
 	} else {
 		transactions := getAllTransactionsOfUser(database, userID)
 		data := ReportsViewData{
@@ -204,7 +204,8 @@ func main() {
 	router.HandleFunc("/", index)
 	router.HandleFunc("/categories", category)
 	router.HandleFunc("/reports", reports).Methods("GET")
-	router.HandleFunc("/delete_category", deleteCategory).Methods("POST")
+	router.HandleFunc("/categories/delete", deleteCategory).Methods("POST")
+	router.HandleFunc("/categories/edit", editCategory)
 	router.HandleFunc("/login", login)
 	router.HandleFunc("/signup", signup)
 	router.HandleFunc("/logout", logout).Methods("POST")

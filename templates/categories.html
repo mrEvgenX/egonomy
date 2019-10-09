@@ -23,12 +23,18 @@
                     {{ range .Categories }}
                     <tr>
                         <td>{{ .Name }}</td>
-                        <td>Редактировать</td>
                         <td>
-                            <form action="/delete_category" method="POST">
+                            <form action="/categories/edit" method="GET">
                                 <input type="hidden" name="category-id" value="{{ .ID }}">
-                                <button type="submit" class="btn btn-link nav-link">Удалить</button>
-                            </form>                            
+                                <input type="hidden" name="category-name" value="{{ .Name }}">
+                                <button type="submit" class="btn btn-link nav-link">Редактировать</button>
+                            </form>
+                        </td>
+                        <td>
+                            <form action="/categories/delete" method="POST">
+                                <input type="hidden" name="category-id" value="{{ .ID }}">
+                                <button type="submit" class="btn btn-link nav-link" style="color: red">Удалить</button>
+                            </form>
                         </td>
                     </tr>
                     {{ end }}

@@ -38,6 +38,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 		email := strings.ToLower(r.FormValue("user-email"))
 		password := r.FormValue("user-password")
+		rememberMe := r.FormValue("remember-me") == "on"
 		var dbUser User
 		err = database.QueryRowx("select id, email, sha, salt, online from users where email = $1", email).StructScan(&dbUser)
 		if err != nil {
@@ -47,7 +48,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		sha := sha256.Sum256([]byte(password + dbUser.Salt))
 		if bytes.Compare(sha[:], dbUser.Sha) == 0 {
 			log.Println("User logged in", email)
-			setCookie(dbUser.ID, w)
+			setCookie(dbUser.ID, rememberMe, w)
 			http.Redirect(w, r, "/", 302)
 		} else {
 			log.Println("Invalid password", email)
@@ -120,15 +121,25 @@ func logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", 302)
 }
 
-func setCookie(userID int, response http.ResponseWriter) {
+func setCookie(userID int, rememberMe bool, response http.ResponseWriter) {
 	value := map[string]int{
 		"name": userID,
 	}
 	if encoded, err := cookieHandler.Encode("cookie", value); err == nil {
-		cookie := &http.Cookie{
-			Name:  "cookie",
-			Value: encoded,
-			Path:  "/",
+		var cookie *http.Cookie
+		if rememberMe {
+			cookie = &http.Cookie{
+				Name:    "cookie",
+				Value:   encoded,
+				Path:    "/",
+				Expires: time.Now().Add(365 * 24 * time.Hour),
+			}
+		} else {
+			cookie = &http.Cookie{
+				Name:  "cookie",
+				Value: encoded,
+				Path:  "/",
+			}
 		}
 		http.SetCookie(response, cookie)
 	}
