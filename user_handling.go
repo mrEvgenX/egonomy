@@ -16,17 +16,23 @@ import (
 
 // User - element of corresponding table
 type User struct {
-	ID     int
-	Email  string
-	Sha    []byte
-	Salt   string
-	Online bool
+	ID    int
+	Email string
+	Sha   []byte
+	Salt  string
 }
 
 // ViewData - information to display on page
 type ViewData struct {
 	Title            string
 	ErrorDescription string
+}
+
+// SettingsViewData - information to display on page
+type SettingsViewData struct {
+	Title              string
+	ErrorDescription   string
+	SuccessDescription string
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +46,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		password := r.FormValue("user-password")
 		rememberMe := r.FormValue("remember-me") == "on"
 		var dbUser User
-		err = database.QueryRowx("select id, email, sha, salt, online from users where email = $1", email).StructScan(&dbUser)
+		err = database.QueryRowx("select id, email, sha, salt from users where email = $1", email).StructScan(&dbUser)
 		if err != nil {
 			log.Println(err)
 		}
@@ -92,15 +98,15 @@ func signup(w http.ResponseWriter, r *http.Request) {
 		sha := sha256.Sum256([]byte(password + salt))
 
 		_, err = database.Exec(
-			"INSERT INTO users(email, sha, salt, online) VALUES ($1, $2::bytea, $3, FALSE)",
+			"INSERT INTO users(email, sha, salt) VALUES ($1, $2::bytea, $3)",
 			email, sha[:], salt,
 		)
 		if err != nil {
 			log.Println(err)
-			log.Println("DB is not available", email)
-		} else {
-			log.Println("New user signed up", email)
+			http.Redirect(w, r, "/login?error=8", 302)
+			return
 		}
+		log.Println("New user signed up", email)
 		http.Redirect(w, r, "/login", 302)
 	} else {
 		userID := getUserID(r)
@@ -119,6 +125,85 @@ func signup(w http.ResponseWriter, r *http.Request) {
 func logout(w http.ResponseWriter, r *http.Request) {
 	clearCookie(w)
 	http.Redirect(w, r, "/login", 302)
+}
+
+func settings(w http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r)
+	if userID == 0 {
+		http.Redirect(w, r, "/login", 302)
+	} else {
+		errorCodes := r.URL.Query()["error"]
+		successCodes := r.URL.Query()["success"]
+		var (
+			errorCode   int64
+			successCode int64
+		)
+		if len(errorCodes) > 0 {
+			var err error
+			errorCode, err = strconv.ParseInt(errorCodes[0], 10, 32)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+		if len(successCodes) > 0 {
+			var err error
+			successCode, err = strconv.ParseInt(successCodes[0], 10, 32)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+
+		data := SettingsViewData{
+			Title:              "Настройки",
+			ErrorDescription:   allErrors[int(errorCode)],
+			SuccessDescription: allNotifications[int(successCode)],
+		}
+		tmpl, _ := template.ParseFiles("templates/layout.html", "templates/settings.html", "templates/navigation_logedin.html")
+		tmpl.ExecuteTemplate(w, "layout", data)
+	}
+}
+
+func changePassword(w http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r)
+	if userID == 0 {
+		http.Redirect(w, r, "/login", 302)
+	} else {
+		log.Println("Password change")
+		err := r.ParseForm()
+		if err != nil {
+			log.Println("Form parse failed", err)
+			http.Redirect(w, r, "/settings?error=7", 302)
+			return
+		}
+		oldPassword := r.FormValue("old-password")
+		newPassword := r.FormValue("new-password")
+
+		var dbUser User
+		err = database.QueryRowx("select id, email, sha, salt from users where id = $1", userID).StructScan(&dbUser)
+		if err != nil {
+			log.Println("Query failed", err)
+		}
+
+		sha := sha256.Sum256([]byte(oldPassword + dbUser.Salt))
+		if bytes.Compare(sha[:], dbUser.Sha) != 0 {
+			log.Println("Invalid password", dbUser.Email)
+			http.Redirect(w, r, "/settings?error=7", 302)
+			return
+		}
+
+		sha = sha256.Sum256([]byte(newPassword + dbUser.Salt))
+		_, err = database.Exec(
+			"UPDATE users SET sha = $1::bytea WHERE id = $2",
+			sha[:], userID,
+		)
+		if err != nil {
+			log.Println("Updating failed", err)
+			http.Redirect(w, r, "/settings?error=7", 302)
+			return
+		}
+		log.Println("Password successfully changed")
+		http.Redirect(w, r, "/settings?success=1", 302)
+	}
 }
 
 func setCookie(userID int, rememberMe bool, response http.ResponseWriter) {

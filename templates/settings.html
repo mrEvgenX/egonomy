@@ -1,0 +1,38 @@
+{{ define "content" }}
+    <div class="row">
+        <div class="col">
+            <form name="changePasswordForm" action="/settings/change_password" method="POST" onsubmit="return validateForm()">
+                {{ if .ErrorDescription }}
+                <div class="alert alert-danger" role="alert">
+                    {{ .ErrorDescription }}
+                </div>
+                {{ end }}
+                {{ if .SuccessDescription }}
+                <div class="alert alert-success" role="alert">
+                    {{ .SuccessDescription }}
+                </div>
+                {{ end }}
+                <div class="form-group">
+                    <input type="password" class="form-control" name="old-password" placeholder="Старый пароль" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" class="form-control" name="new-password" placeholder="Новый пароль" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" class="form-control" name="new-password-confirmation" placeholder="Новый пароль еще раз" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Сменить пароль</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        function validateForm() {
+            let pass = document.forms["changePasswordForm"]["new-password"].value;
+            let conf = document.forms["changePasswordForm"]["new-password-confirmation"].value;
+            if (pass !== conf) {
+                alert("Подтверждение пароля неправильное.");
+                return false;
+            }
+        }
+    </script>
+{{ end }}

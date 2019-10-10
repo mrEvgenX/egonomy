@@ -53,6 +53,13 @@ var allErrors = map[int]string{
 	4: "Не выбрана категория",
 	5: "Некорректное значение суммы",
 	6: "Не удалось сохранить данные в базе",
+	7: "Не удалось поменять пароль",
+	8: "Пользователь с таким email уже существует",
+}
+
+var allNotifications = map[int]string{
+	0: "",
+	1: "Пароль успешно изменен",
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
@@ -209,6 +216,8 @@ func main() {
 	router.HandleFunc("/login", login)
 	router.HandleFunc("/signup", signup)
 	router.HandleFunc("/logout", logout).Methods("POST")
+	router.HandleFunc("/settings", settings)
+	router.HandleFunc("/settings/change_password", changePassword).Methods("POST")
 	http.Handle("/", router)
 
 	port := os.Getenv("PORT")
