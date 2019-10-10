@@ -218,6 +218,7 @@ func main() {
 	router.HandleFunc("/logout", logout).Methods("POST")
 	router.HandleFunc("/settings", settings)
 	router.HandleFunc("/settings/change_password", changePassword).Methods("POST")
+	router.HandleFunc("/settings/terminate_session", terminateSession).Methods("POST")
 	http.Handle("/", router)
 
 	port := os.Getenv("PORT")

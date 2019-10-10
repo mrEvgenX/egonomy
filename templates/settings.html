@@ -1,6 +1,7 @@
 {{ define "content" }}
     <div class="row">
         <div class="col">
+            <h2>Сменить пароль</h2>
             <form name="changePasswordForm" action="/settings/change_password" method="POST" onsubmit="return validateForm()">
                 {{ if .ErrorDescription }}
                 <div class="alert alert-danger" role="alert">
@@ -23,6 +24,36 @@
                 </div>
                 <button type="submit" class="btn btn-primary">Сменить пароль</button>
             </form>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <h2>Активные сессии</h2>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <td>Дата</td>
+                        <td>IP</td>
+                        <td>User Agent</td>
+                        <td>&nbsp;</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ range .Sessions }}
+                    <tr>
+                        <td>{{ .Initiated.Format "2006-01-02" }}</td>
+                        <td>{{ .IP }}</td>
+                        <td>{{ .UserAgent }}</td>
+                        <td>
+                            <form action="/settings/terminate_session" method="POST">
+                                <input type="hidden" name="token" value="{{ .Token }}">
+                                <button type="submit" class="btn btn-link nav-link" style="color: red">Завершить</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {{ end }}
+                </tbody>
+            </table>
         </div>
     </div>
     <script>
