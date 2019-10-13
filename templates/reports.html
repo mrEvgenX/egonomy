@@ -8,6 +8,8 @@
                         <td>Категория</td>
                         <td>Сумма</td>
                         <td>Комментарий</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
                     </tr>
                 </thead>
                 <tbody>
@@ -17,6 +19,18 @@
                         <td>{{ .CategoryName }}</td>
                         <td>{{ .Amount }} руб.</td>
                         <td>{{ .Comment }}</td>
+                        <td>
+                            <form action="/reports/edit" method="GET">
+                                <input type="hidden" name="transaction-id" value="{{ .ID }}">
+                                <button type="submit" class="btn btn-link nav-link">Редактировать</button>
+                            </form>
+                        </td>
+                        <td>
+                            <form action="/reports/delete" method="POST">
+                                <input type="hidden" name="transaction-id" value="{{ .ID }}">
+                                <button type="submit" class="btn btn-link nav-link" style="color: red">Удалить</button>
+                            </form>
+                        </td>
                     </tr>
                     {{ end }}
                 </tbody>

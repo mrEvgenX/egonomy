@@ -17,6 +17,7 @@ var database *sqlx.DB
 
 // Transaction - element of corresponding table
 type Transaction struct {
+	ID       int
 	Date     time.Time
 	Category int32
 	Amount   float32
@@ -25,6 +26,7 @@ type Transaction struct {
 
 // TransactionNamed - element of corresponding table
 type TransactionNamed struct {
+	ID           int
 	Date         time.Time
 	CategoryName string
 	Amount       float32
@@ -44,6 +46,14 @@ type IndexViewData struct {
 type ReportsViewData struct {
 	Title        string
 	Transactions []TransactionNamed
+}
+
+// ReportsEditorViewData - information to display on page
+type ReportsEditorViewData struct {
+	Title            string
+	Transaction      Transaction
+	Categories       []Category
+	ErrorDescription string
 }
 
 var allErrors = map[int]string{
@@ -88,7 +98,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			comment := r.FormValue("comment")
-			t := Transaction{time.Now(), int32(categoryID), float32(amount), comment}
+			t := Transaction{0, time.Now(), int32(categoryID), float32(amount), comment}
 			_, err = database.Exec(
 				"INSERT INTO transactions(user_id, date, category, amount, comment) VALUES ($1, $2, $3, $4, $5)",
 				userID, t.Date, t.Category, t.Amount, t.Comment,
@@ -144,6 +154,113 @@ func reports(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func deleteTransaction(w http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r)
+	if userID == 0 {
+		http.Redirect(w, r, "/login", 302)
+	} else {
+		err := r.ParseForm()
+		if err != nil {
+			log.Println(err)
+		}
+		transactionID := r.FormValue("transaction-id")
+		var transactionUserID int
+		err = database.QueryRowx("select user_id from transactions where id = $1", transactionID).Scan(&transactionUserID)
+		if err != nil {
+			log.Println(err)
+		}
+
+		if userID == transactionUserID {
+			log.Println("Delete transaction")
+			_, err = database.Exec(
+				"DELETE FROM transactions WHERE id = $1 AND user_id = $2",
+				transactionID, userID,
+			)
+			if err != nil {
+				log.Println(err)
+			}
+		} else {
+			log.Println("Wrong user")
+		}
+		http.Redirect(w, r, "/reports", 302)
+	}
+}
+
+func editTransaction(w http.ResponseWriter, r *http.Request) {
+	userID := getUserID(r)
+	if userID == 0 {
+		http.Redirect(w, r, "/login", 302)
+	} else {
+		if r.Method == "POST" {
+			log.Println("Edit existing transaction")
+			err := r.ParseForm()
+			if err != nil {
+				log.Println(err)
+			}
+
+			transactionID := r.FormValue("transaction-id")
+			categoryID, err := strconv.ParseInt(r.FormValue("category-id"), 10, 32)
+			if err != nil {
+				log.Println(err)
+				http.Redirect(w, r, "/reports?error=4", 302)
+				return
+			}
+			amount, err := strconv.ParseFloat(r.FormValue("amount"), 32)
+			if err != nil {
+				log.Println(err)
+				http.Redirect(w, r, "/reports?error=5", 302)
+				return
+			}
+			comment := r.FormValue("comment")
+
+			_, err = database.Exec(
+				"UPDATE transactions SET category = $1, amount = $2, comment = $3 WHERE id = $4 AND user_id = $5",
+				categoryID, amount, comment, transactionID, userID,
+			)
+			if err != nil {
+				log.Println(err)
+			}
+			http.Redirect(w, r, "/reports", 302)
+		} else {
+			transactionIDs := r.URL.Query()["transaction-id"]
+			var transactionID int64
+			if len(transactionIDs) > 0 {
+				var err error
+				transactionID, err = strconv.ParseInt(transactionIDs[0], 10, 32)
+				if err != nil {
+					log.Println(err)
+				}
+			}
+			log.Println(transactionID)
+
+			var transaction Transaction
+			err := database.QueryRowx("select id, date, category, amount, comment from transactions where id = $1", transactionID).StructScan(&transaction)
+			if err != nil {
+				log.Println(err)
+			}
+
+			categories := getAllCategoriesOfUser(database, userID)
+
+			log.Println(transaction)
+
+			data := ReportsEditorViewData{
+				Title:            "Вход",
+				Transaction:      transaction,
+				Categories:       categories,
+				ErrorDescription: "",
+			}
+			tmpl, err := template.ParseFiles("templates/layout.html", "templates/reports_editor.html", "templates/navigation_logedin.html")
+			if err != nil {
+				log.Println(err)
+			}
+			err = tmpl.ExecuteTemplate(w, "layout", data)
+			if err != nil {
+				log.Println(err)
+			}
+		}
+	}
+}
+
 func getMonthlyWeeklyTotal() (monthlyTotal float32, weeklyTotal float32, err error) {
 	err = database.QueryRowx(`
 	SELECT 
@@ -163,7 +280,7 @@ func getMonthlyWeeklyTotal() (monthlyTotal float32, weeklyTotal float32, err err
 
 func getAllTransactionsOfUser(db *sqlx.DB, userID int) (transactions []TransactionNamed) {
 	rows, err := db.Queryx(`
-	SELECT date, c.name AS categoryname, amount, comment 
+	SELECT t.id, date, c.name AS categoryname, amount, comment 
 	FROM transactions t
 	JOIN categories c
 	ON t.category = c.id
@@ -219,6 +336,8 @@ func main() {
 	router.HandleFunc("/settings", settings)
 	router.HandleFunc("/settings/change_password", changePassword).Methods("POST")
 	router.HandleFunc("/settings/terminate_session", terminateSession).Methods("POST")
+	router.HandleFunc("/reports/delete", deleteTransaction).Methods("POST")
+	router.HandleFunc("/reports/edit", editTransaction)
 	http.Handle("/", router)
 
 	port := os.Getenv("PORT")
