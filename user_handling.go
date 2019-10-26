@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gorilla/securecookie"
+	// "github.com/satori/go.uuid"
 )
 
 // User - element of corresponding table
@@ -41,6 +42,7 @@ type ViewData struct {
 type SettingsViewData struct {
 	Title              string
 	Sessions           []Session
+	CurrentSessionID   string
 	ErrorDescription   string
 	SuccessDescription string
 }
@@ -89,7 +91,10 @@ func login(w http.ResponseWriter, r *http.Request) {
 				Title:            "Вход",
 				ErrorDescription: allErrors[int(errorCode)],
 			}
-			tmpl, _ := template.ParseFiles("templates/layout.html", "templates/login.html", "templates/navigation_logedout.html")
+			tmpl, err := template.ParseFiles("templates/layout.html", "templates/login.html", "templates/navigation_logedout.html")
+			if err != nil {
+				log.Println(err)
+			}
 			tmpl.ExecuteTemplate(w, "layout", data)
 		}
 	}
@@ -184,13 +189,25 @@ func settings(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 		}
 
+		var currentSessionID string
+		cookie, err := r.Cookie("cookie")
+		if err == nil {
+			currentSessionID = cookie.Value
+		} else {
+			log.Println("No cookie")
+		}
+
 		data := SettingsViewData{
 			Title:              "Настройки",
 			Sessions:           sessions,
+			CurrentSessionID:   currentSessionID,
 			ErrorDescription:   allErrors[int(errorCode)],
 			SuccessDescription: allNotifications[int(successCode)],
 		}
-		tmpl, _ := template.ParseFiles("templates/layout.html", "templates/settings.html", "templates/navigation_logedin.html")
+		tmpl, err := template.ParseFiles("templates/layout.html", "templates/settings.html", "templates/navigation_logedin.html")
+		if err != nil {
+			log.Println(err)
+		}
 		tmpl.ExecuteTemplate(w, "layout", data)
 	}
 }
@@ -275,6 +292,8 @@ func setCookie(userID int, ip string, userAgent string, rememberMe bool, respons
 	value := map[string]int{
 		"name": userID,
 	}
+
+	// sessionToken := uuid.NewV4().String()
 	encoded, err := cookieHandler.Encode("cookie", value)
 	if err == nil {
 		var cookie *http.Cookie

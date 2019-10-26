@@ -32,6 +32,7 @@
             <table class="table table-hover">
                 <thead>
                     <tr>
+                        <td>&nbsp;</td>
                         <td>Дата</td>
                         <td>IP</td>
                         <td>User Agent</td>
@@ -41,6 +42,7 @@
                 <tbody>
                     {{ range .Sessions }}
                     <tr>
+                        <td>{{ if eq $.CurrentSessionID .Token }}Текущая{{ else }}&nbsp;{{ end }}</td>
                         <td>{{ .Initiated.Format "2006-01-02" }}</td>
                         <td>{{ .IP }}</td>
                         <td>{{ .UserAgent }}</td>

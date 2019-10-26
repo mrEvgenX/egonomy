@@ -1,40 +1,51 @@
 {{ define "content" }}
     <div class="row">
-        <div class="col">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <td>Дата</td>
-                        <td>Категория</td>
-                        <td>Сумма</td>
-                        <td>Комментарий</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{ range .Transactions }}
-                    <tr>
-                        <td>{{ .Date.Format "2006-01-02" }}</td>
-                        <td>{{ .CategoryName }}</td>
-                        <td>{{ .Amount }} руб.</td>
-                        <td>{{ .Comment }}</td>
-                        <td>
-                            <form action="/reports/edit" method="GET">
-                                <input type="hidden" name="transaction-id" value="{{ .ID }}">
-                                <button type="submit" class="btn btn-link nav-link">Редактировать</button>
-                            </form>
-                        </td>
-                        <td>
-                            <form action="/reports/delete" method="POST">
-                                <input type="hidden" name="transaction-id" value="{{ .ID }}">
-                                <button type="submit" class="btn btn-link nav-link" style="color: red">Удалить</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {{ end }}
-                </tbody>
-            </table>
+        <div class="col-2">
+            <div class="list-group">
+                <a href="#" class="list-group-item list-group-item-action disabled">Графики</a>
+                <a href="#" class="list-group-item list-group-item-action disabled">Распределение категорий</a>
+                <a href="#" class="list-group-item list-group-item-action active">Все транзакции</a>
+            </div>
+        </div>
+        <div class="col-10">
+            <div class="row">
+                <div class="col">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <td>Дата</td>
+                                <td>Категория</td>
+                                <td>Сумма</td>
+                                <td>Комментарий</td>
+                                <td>&nbsp;</td>
+                                <td>&nbsp;</td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{ range .Transactions }}
+                            <tr>
+                                <td>{{ .Date.Format "2006-01-02" }}</td>
+                                <td>{{ .CategoryName }}</td>
+                                <td>{{ .Amount }} руб.</td>
+                                <td>{{ .Comment }}</td>
+                                <td>
+                                    <form action="/reports/edit" method="GET">
+                                        <input type="hidden" name="transaction-id" value="{{ .ID }}">
+                                        <button type="submit" class="btn btn-link nav-link">Редактировать</button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form action="/reports/delete" method="POST">
+                                        <input type="hidden" name="transaction-id" value="{{ .ID }}">
+                                        <button type="submit" class="btn btn-link nav-link" style="color: red">Удалить</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {{ end }}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 {{ end }}
