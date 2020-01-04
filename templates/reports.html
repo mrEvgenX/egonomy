@@ -16,6 +16,8 @@
                                 <td>Дата</td>
                                 <td>Категория</td>
                                 <td>Сумма</td>
+                                <td>Книга</td>
+                                <td>Автор</td>
                                 <td>Комментарий</td>
                                 <td>&nbsp;</td>
                                 <td>&nbsp;</td>
@@ -27,6 +29,8 @@
                                 <td>{{ .Date.Format "2006-01-02" }}</td>
                                 <td>{{ .CategoryName }}</td>
                                 <td>{{ .Amount }} руб.</td>
+                                <td>Личная</td>
+                                <td>Вы</td>
                                 <td>{{ .Comment }}</td>
                                 <td>
                                     <form action="/reports/edit" method="GET">

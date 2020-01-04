@@ -40,6 +40,7 @@ type IndexViewData struct {
 	MonthlyTotal     float32
 	WeeklyTotal      float32
 	ErrorDescription string
+	AccountingBooks  []AccountingBook
 }
 
 // ReportsViewData - information to display on page
@@ -106,6 +107,10 @@ func mainPageView(w http.ResponseWriter, r *http.Request, userID int) {
 		MonthlyTotal:     monthlyTotal,
 		WeeklyTotal:      weeklyTotal,
 		ErrorDescription: allErrors[int(errorCode)],
+		AccountingBooks: []AccountingBook{
+			AccountingBook{ID: 1, Name: "Личная"},
+			AccountingBook{ID: 2, Name: "Семейная"},
+		},
 	}
 	tmpl, _ := template.ParseFiles("templates/layout.html", "templates/index.html", "templates/navigation_logedin.html")
 	tmpl.ExecuteTemplate(w, "layout", data)
@@ -322,13 +327,17 @@ func main() {
 	router.HandleFunc("/logout", logout).Methods("POST")
 	router.HandleFunc("/categories", loginRequired(allCategoriesView)).Methods("GET")
 	router.HandleFunc("/categories", loginRequired(addNewCategory)).Methods("POST")
+	router.HandleFunc("/categories/edit", loginRequired(editCategoryView)).Methods("GET")
+	router.HandleFunc("/categories/edit", loginRequired(editCategory)).Methods("POST")
+	router.HandleFunc("/categories/delete", loginRequired(deleteCategory)).Methods("POST")
 	router.HandleFunc("/reports", loginRequired(reportsView)).Methods("GET")
 	router.HandleFunc("/reports/delete", loginRequired(deleteTransaction)).Methods("POST")
 	router.HandleFunc("/reports/edit", loginRequired(editTransactionView)).Methods("GET")
 	router.HandleFunc("/reports/edit", loginRequired(editTransaction)).Methods("POST")
-	router.HandleFunc("/categories/delete", loginRequired(deleteCategory)).Methods("POST")
-	router.HandleFunc("/categories/edit", loginRequired(editCategoryView)).Methods("GET")
-	router.HandleFunc("/categories/edit", loginRequired(editCategory)).Methods("POST")
+
+	router.HandleFunc("/accounting_books", loginRequired(reportsView)).Methods("GET")
+	router.HandleFunc("/accounting_books/{id}", loginRequired(reportsView)).Methods("GET")
+
 	router.HandleFunc("/settings", loginRequired(settingsView))
 	router.HandleFunc("/settings/change_password", loginRequired(changePassword)).Methods("POST")
 	router.HandleFunc("/settings/terminate_session", loginRequired(terminateSession)).Methods("POST")

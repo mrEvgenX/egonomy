@@ -18,6 +18,13 @@
                 </div>
                 {{ end }}
                 <div class="form-group">
+                    <select class="custom-select" name="accounting-book-id" required>
+                        {{ range .AccountingBooks }}
+                        <option value="{{ .ID }}">{{ .Name }}</option>
+                        {{ end }}
+                    </select>
+                </div>
+                <div class="form-group">
                         <select class="custom-select" name="category-id" required>
                             <option hidden disabled selected value>-- Выберите категорию --</option>
                             {{ range .Categories }}
