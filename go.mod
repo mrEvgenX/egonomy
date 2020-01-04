@@ -1,3 +1,5 @@
+// +heroku goVersion go1.13
+
 module egonomy
 
 go 1.13
