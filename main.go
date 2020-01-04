@@ -72,192 +72,182 @@ var allNotifications = map[int]string{
 	1: "Пароль успешно изменен",
 }
 
-func index(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
-	if userID == 0 {
-		http.Redirect(w, r, "/login", 302)
-	} else {
-		if r.Method == "POST" {
-			log.Println("New transaction")
-			err := r.ParseForm()
-			if err != nil {
-				log.Println(err)
-				http.Redirect(w, r, "/?error=3", 302)
-				return
-			}
-			categoryID, err := strconv.ParseInt(r.FormValue("category-id"), 10, 32)
-			if err != nil {
-				log.Println(err)
-				http.Redirect(w, r, "/?error=4", 302)
-				return
-			}
-			amount, err := strconv.ParseFloat(r.FormValue("amount"), 32)
-			if err != nil {
-				log.Println(err)
-				http.Redirect(w, r, "/?error=5", 302)
-				return
-			}
-			comment := r.FormValue("comment")
-			t := Transaction{0, time.Now(), int32(categoryID), float32(amount), comment}
-			_, err = database.Exec(
-				"INSERT INTO transactions(user_id, date, category, amount, comment) VALUES ($1, $2, $3, $4, $5)",
-				userID, t.Date, t.Category, t.Amount, t.Comment,
-			)
-			if err != nil {
-				log.Println(err)
-				http.Redirect(w, r, "/?error=6", 302)
-				return
-			}
-			http.Redirect(w, r, "/", 302)
+func loginRequired(handler func(w http.ResponseWriter, r *http.Request, userID int)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := getUserID(r)
+		if userID == 0 {
+			http.Redirect(w, r, "/login", 302)
 		} else {
-			errorCodes := r.URL.Query()["error"]
-			var errorCode int64
-			if len(errorCodes) > 0 {
-				var err error
-				errorCode, err = strconv.ParseInt(errorCodes[0], 10, 32)
-				if err != nil {
-					log.Println(err)
-				}
-			}
-
-			categories := getAllCategoriesOfUser(database, userID)
-			monthlyTotal, weeklyTotal, err := getMonthlyWeeklyTotal()
-			if err != nil {
-				log.Println(err)
-			}
-
-			data := IndexViewData{
-				Title:            "Главная",
-				Categories:       categories,
-				MonthlyTotal:     monthlyTotal,
-				WeeklyTotal:      weeklyTotal,
-				ErrorDescription: allErrors[int(errorCode)],
-			}
-			tmpl, _ := template.ParseFiles("templates/layout.html", "templates/index.html", "templates/navigation_logedin.html")
-			tmpl.ExecuteTemplate(w, "layout", data)
+			handler(w, r, userID)
 		}
 	}
 }
 
-func reports(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
-	if userID == 0 {
-		http.Redirect(w, r, "/login", 302)
-	} else {
-		transactions := getAllTransactionsOfUser(database, userID)
-		data := ReportsViewData{
-			Title:        "Главная",
-			Transactions: transactions,
-		}
-		tmpl, _ := template.ParseFiles("templates/layout.html", "templates/reports.html", "templates/navigation_logedin.html")
-		tmpl.ExecuteTemplate(w, "layout", data)
-	}
-}
-
-func deleteTransaction(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
-	if userID == 0 {
-		http.Redirect(w, r, "/login", 302)
-	} else {
-		err := r.ParseForm()
+func mainPageView(w http.ResponseWriter, r *http.Request, userID int) {
+	errorCodes := r.URL.Query()["error"]
+	var errorCode int64
+	if len(errorCodes) > 0 {
+		var err error
+		errorCode, err = strconv.ParseInt(errorCodes[0], 10, 32)
 		if err != nil {
 			log.Println(err)
 		}
-		transactionID := r.FormValue("transaction-id")
-		var transactionUserID int
-		err = database.QueryRowx("select user_id from transactions where id = $1", transactionID).Scan(&transactionUserID)
+	}
+
+	categories := getAllCategoriesOfUser(database, userID)
+	monthlyTotal, weeklyTotal, err := getMonthlyWeeklyTotal()
+	if err != nil {
+		log.Println(err)
+	}
+
+	data := IndexViewData{
+		Title:            "Главная",
+		Categories:       categories,
+		MonthlyTotal:     monthlyTotal,
+		WeeklyTotal:      weeklyTotal,
+		ErrorDescription: allErrors[int(errorCode)],
+	}
+	tmpl, _ := template.ParseFiles("templates/layout.html", "templates/index.html", "templates/navigation_logedin.html")
+	tmpl.ExecuteTemplate(w, "layout", data)
+}
+
+func reportsView(w http.ResponseWriter, r *http.Request, userID int) {
+	transactions := getAllTransactionsOfUser(database, userID)
+	data := ReportsViewData{
+		Title:        "Главная",
+		Transactions: transactions,
+	}
+	tmpl, _ := template.ParseFiles("templates/layout.html", "templates/reports.html", "templates/navigation_logedin.html")
+	tmpl.ExecuteTemplate(w, "layout", data)
+}
+
+func newTransaction(w http.ResponseWriter, r *http.Request, userID int) {
+	log.Println("New transaction")
+	err := r.ParseForm()
+	if err != nil {
+		log.Println(err)
+		http.Redirect(w, r, "/?error=3", 302)
+		return
+	}
+	categoryID, err := strconv.ParseInt(r.FormValue("category-id"), 10, 32)
+	if err != nil {
+		log.Println(err)
+		http.Redirect(w, r, "/?error=4", 302)
+		return
+	}
+	amount, err := strconv.ParseFloat(r.FormValue("amount"), 32)
+	if err != nil {
+		log.Println(err)
+		http.Redirect(w, r, "/?error=5", 302)
+		return
+	}
+	comment := r.FormValue("comment")
+	t := Transaction{0, time.Now(), int32(categoryID), float32(amount), comment}
+	_, err = database.Exec(
+		"INSERT INTO transactions(user_id, date, category, amount, comment) VALUES ($1, $2, $3, $4, $5)",
+		userID, t.Date, t.Category, t.Amount, t.Comment,
+	)
+	if err != nil {
+		log.Println(err)
+		http.Redirect(w, r, "/?error=6", 302)
+		return
+	}
+	http.Redirect(w, r, "/", 302)
+}
+
+func deleteTransaction(w http.ResponseWriter, r *http.Request, userID int) {
+	err := r.ParseForm()
+	if err != nil {
+		log.Println(err)
+	}
+	transactionID := r.FormValue("transaction-id")
+	var transactionUserID int
+	err = database.QueryRowx("select user_id from transactions where id = $1", transactionID).Scan(&transactionUserID)
+	if err != nil {
+		log.Println(err)
+	}
+
+	if userID == transactionUserID {
+		log.Println("Delete transaction")
+		_, err = database.Exec(
+			"DELETE FROM transactions WHERE id = $1 AND user_id = $2",
+			transactionID, userID,
+		)
 		if err != nil {
 			log.Println(err)
 		}
-
-		if userID == transactionUserID {
-			log.Println("Delete transaction")
-			_, err = database.Exec(
-				"DELETE FROM transactions WHERE id = $1 AND user_id = $2",
-				transactionID, userID,
-			)
-			if err != nil {
-				log.Println(err)
-			}
-		} else {
-			log.Println("Wrong user")
-		}
-		http.Redirect(w, r, "/reports", 302)
+	} else {
+		log.Println("Wrong user")
 	}
+	http.Redirect(w, r, "/reports", 302)
 }
 
-func editTransaction(w http.ResponseWriter, r *http.Request) {
-	userID := getUserID(r)
-	if userID == 0 {
-		http.Redirect(w, r, "/login", 302)
-	} else {
-		if r.Method == "POST" {
-			log.Println("Edit existing transaction")
-			err := r.ParseForm()
-			if err != nil {
-				log.Println(err)
-			}
+func editTransaction(w http.ResponseWriter, r *http.Request, userID int) {
+	err := r.ParseForm()
+	if err != nil {
+		log.Println(err)
+	}
 
-			transactionID := r.FormValue("transaction-id")
-			categoryID, err := strconv.ParseInt(r.FormValue("category-id"), 10, 32)
-			if err != nil {
-				log.Println(err)
-				http.Redirect(w, r, "/reports?error=4", 302)
-				return
-			}
-			amount, err := strconv.ParseFloat(r.FormValue("amount"), 32)
-			if err != nil {
-				log.Println(err)
-				http.Redirect(w, r, "/reports?error=5", 302)
-				return
-			}
-			comment := r.FormValue("comment")
+	transactionID := r.FormValue("transaction-id")
+	categoryID, err := strconv.ParseInt(r.FormValue("category-id"), 10, 32)
+	if err != nil {
+		log.Println(err)
+		http.Redirect(w, r, "/reports?error=4", 302)
+		return
+	}
+	amount, err := strconv.ParseFloat(r.FormValue("amount"), 32)
+	if err != nil {
+		log.Println(err)
+		http.Redirect(w, r, "/reports?error=5", 302)
+		return
+	}
+	comment := r.FormValue("comment")
 
-			_, err = database.Exec(
-				"UPDATE transactions SET category = $1, amount = $2, comment = $3 WHERE id = $4 AND user_id = $5",
-				categoryID, amount, comment, transactionID, userID,
-			)
-			if err != nil {
-				log.Println(err)
-			}
-			http.Redirect(w, r, "/reports", 302)
-		} else {
-			transactionIDs := r.URL.Query()["transaction-id"]
-			var transactionID int64
-			if len(transactionIDs) > 0 {
-				var err error
-				transactionID, err = strconv.ParseInt(transactionIDs[0], 10, 32)
-				if err != nil {
-					log.Println(err)
-				}
-			}
-			log.Println(transactionID)
+	_, err = database.Exec(
+		"UPDATE transactions SET category = $1, amount = $2, comment = $3 WHERE id = $4 AND user_id = $5",
+		categoryID, amount, comment, transactionID, userID,
+	)
+	if err != nil {
+		log.Println(err)
+	}
+	http.Redirect(w, r, "/reports", 302)
+}
 
-			var transaction Transaction
-			err := database.QueryRowx("select id, date, category, amount, comment from transactions where id = $1", transactionID).StructScan(&transaction)
-			if err != nil {
-				log.Println(err)
-			}
-
-			categories := getAllCategoriesOfUser(database, userID)
-
-			log.Println(transaction)
-
-			data := ReportsEditorViewData{
-				Title:            "Вход",
-				Transaction:      transaction,
-				Categories:       categories,
-				ErrorDescription: "",
-			}
-			tmpl, err := template.ParseFiles("templates/layout.html", "templates/reports_editor.html", "templates/navigation_logedin.html")
-			if err != nil {
-				log.Println(err)
-			}
-			err = tmpl.ExecuteTemplate(w, "layout", data)
-			if err != nil {
-				log.Println(err)
-			}
+func editTransactionView(w http.ResponseWriter, r *http.Request, userID int) {
+	transactionIDs := r.URL.Query()["transaction-id"]
+	var transactionID int64
+	if len(transactionIDs) > 0 {
+		var err error
+		transactionID, err = strconv.ParseInt(transactionIDs[0], 10, 32)
+		if err != nil {
+			log.Println(err)
 		}
+	}
+	log.Println(transactionID)
+
+	var transaction Transaction
+	err := database.QueryRowx("select id, date, category, amount, comment from transactions where id = $1", transactionID).StructScan(&transaction)
+	if err != nil {
+		log.Println(err)
+	}
+
+	categories := getAllCategoriesOfUser(database, userID)
+
+	log.Println(transaction)
+
+	data := ReportsEditorViewData{
+		Title:            "Вход",
+		Transaction:      transaction,
+		Categories:       categories,
+		ErrorDescription: "",
+	}
+	tmpl, err := template.ParseFiles("templates/layout.html", "templates/reports_editor.html", "templates/navigation_logedin.html")
+	if err != nil {
+		log.Println(err)
+	}
+	err = tmpl.ExecuteTemplate(w, "layout", data)
+	if err != nil {
+		log.Println(err)
 	}
 }
 
@@ -325,19 +315,23 @@ func main() {
 	defer db.Close()
 
 	var router = mux.NewRouter()
-	router.HandleFunc("/", index)
-	router.HandleFunc("/categories", category)
-	router.HandleFunc("/reports", reports).Methods("GET")
-	router.HandleFunc("/categories/delete", deleteCategory).Methods("POST")
-	router.HandleFunc("/categories/edit", editCategory)
+	router.HandleFunc("/", loginRequired(mainPageView)).Methods("GET")
+	router.HandleFunc("/", loginRequired(newTransaction)).Methods("POST")
 	router.HandleFunc("/login", login)
 	router.HandleFunc("/signup", signup)
 	router.HandleFunc("/logout", logout).Methods("POST")
-	router.HandleFunc("/settings", settings)
-	router.HandleFunc("/settings/change_password", changePassword).Methods("POST")
-	router.HandleFunc("/settings/terminate_session", terminateSession).Methods("POST")
-	router.HandleFunc("/reports/delete", deleteTransaction).Methods("POST")
-	router.HandleFunc("/reports/edit", editTransaction)
+	router.HandleFunc("/categories", loginRequired(allCategoriesView)).Methods("GET")
+	router.HandleFunc("/categories", loginRequired(addNewCategory)).Methods("POST")
+	router.HandleFunc("/reports", loginRequired(reportsView)).Methods("GET")
+	router.HandleFunc("/reports/delete", loginRequired(deleteTransaction)).Methods("POST")
+	router.HandleFunc("/reports/edit", loginRequired(editTransactionView)).Methods("GET")
+	router.HandleFunc("/reports/edit", loginRequired(editTransaction)).Methods("POST")
+	router.HandleFunc("/categories/delete", loginRequired(deleteCategory)).Methods("POST")
+	router.HandleFunc("/categories/edit", loginRequired(editCategoryView)).Methods("GET")
+	router.HandleFunc("/categories/edit", loginRequired(editCategory)).Methods("POST")
+	router.HandleFunc("/settings", loginRequired(settingsView))
+	router.HandleFunc("/settings/change_password", loginRequired(changePassword)).Methods("POST")
+	router.HandleFunc("/settings/terminate_session", loginRequired(terminateSession)).Methods("POST")
 	http.Handle("/", router)
 
 	port := os.Getenv("PORT")
